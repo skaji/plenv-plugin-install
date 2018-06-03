@@ -1,0 +1,46 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use File::Basename 'basename';
+use File::Spec;
+
+my %known = (
+    install      => { url => 'https://github.com/tokuhirom/Perl-Build', as => 'perl-build' },
+    'perl-build' => { url => 'https://github.com/tokuhirom/Perl-Build', as => 'perl-build' },
+    download     => 'https://github.com/skaji/plenv-download',
+    freeze       => 'https://github.com/skaji/plenv-freeze',
+    reset        => 'https://github.com/skaji/plenv-reset',
+    update       => 'https://github.com/hfm/plenv-update',
+    contrib      => 'https://github.com/miyagawa/plenv-contrib',
+);
+
+if (!@ARGV || $ARGV[0] =~ /^(-h|--help)$/) {
+    die "Usage: plenv plugin-install [name]\n";
+}
+
+# Provide plenv completions
+if ($ARGV[0] eq "--complete") {
+    my @name = grep { $_ ne "perl-build" } sort keys %known;
+    print "$_\n" for @name;
+    exit;
+}
+
+my $root = $ENV{PLENV_ROOT} || "$ENV{HOME}/.plenv";
+
+my @name = $ARGV[0] =~ /^all$/i ? (grep { $_ ne "perl-build" } sort keys %known) : @ARGV;
+
+for my $name (@name) {
+    $name =~ s/^plenv-//;
+    my $plugin = $known{$name} or die "Unknown plugin $name\n";
+    my $url = ref $plugin ? $plugin->{url} : $plugin;
+    my $dir = ref $plugin ? $plugin->{as}  : basename $plugin;
+    my $target = File::Spec->catdir($root, "plugins", $dir);
+    if (-e $target) {
+        warn "\e[1;33mAlready installed $target\e[m\n";
+        next;
+    }
+
+    my @cmd = ("git", "clone", $url, $target);
+    warn "\e[1;32m@cmd\e[m\n";
+    !system @cmd or exit 1;
+}
